@@ -1,0 +1,22 @@
+# Render.com deployment config.
+# The database lives on Supabase (permanent free tier), NOT on Render,
+# so your business data is never deleted.
+#
+# You set all three secrets in the Render dashboard → Environment tab:
+#   ANTHROPIC_API_KEY, DATABASE_URL, CLAUDE_MODEL
+
+services:
+  - type: web
+    name: glksspl-assistant
+    runtime: python
+    plan: free
+    region: singapore          # closest free region to India; pair with Supabase
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false             # paste your Claude key in the dashboard
+      - key: DATABASE_URL
+        sync: false             # paste your Supabase connection string
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-4-20250514
