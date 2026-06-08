@@ -1,6 +1,6 @@
 """
 GL Kundu & Sons Steel Pvt. Ltd — Business Assistant
-Flask backend: chatbot + database + dashboard + monthly report.
+Flask backend: chatbot + database + dashboard + report + trends + customer insights.
 The Claude API key lives ONLY on the server, never in the browser.
 """
 
@@ -110,6 +110,20 @@ def get_business_data():
     }
 
 
+# ── Alerts (for dashboard banner) ──────────────────────────────────────
+def compute_alerts():
+    alerts = []
+    for p in Product.query.all():
+        if p.reorder_level and p.stock_tons <= p.reorder_level:
+            alerts.append({"type": "stock", "level": "red",
+                           "text": f"{p.name} is low — {p.stock_tons}T left (reorder at {p.reorder_level}T)"})
+    for c in Customer.query.all():
+        if c.amount_due and c.amount_due > 0 and (c.days_overdue or 0) > 30:
+            alerts.append({"type": "payment", "level": "red",
+                           "text": f"{c.name} is {c.days_overdue} days overdue ({format_inr(c.amount_due)})"})
+    return alerts
+
+
 # ── Pages ──────────────────────────────────────────────────────────────
 @app.route("/")
 def home():
@@ -169,6 +183,7 @@ def dashboard():
 
     return render_template(
         "dashboard.html",
+        alerts=compute_alerts(),
         products=products_view,
         low_stock=low_stock,
         overdue=overdue_view,
@@ -251,6 +266,97 @@ def report():
         top_customers=top_customers,
         has_data=orders > 0,
     )
+
+
+@app.route("/trends")
+def trends():
+    today = date.today()
+    buckets = []
+    yy, mm = today.year, today.month
+    for _ in range(6):
+        buckets.append((yy, mm))
+        mm -= 1
+        if mm == 0:
+            mm, yy = 12, yy - 1
+    buckets.reverse()
+
+    all_sales = Sale.query.all()
+    month_data = []
+    max_rev = 0
+    for (y, m) in buckets:
+        rev = sum(s.amount or 0 for s in all_sales
+                  if s.sale_date and s.sale_date.year == y and s.sale_date.month == m)
+        tons = sum(s.quantity_tons or 0 for s in all_sales
+                   if s.sale_date and s.sale_date.year == y and s.sale_date.month == m)
+        max_rev = max(max_rev, rev)
+        month_data.append({"label": date(y, m, 1).strftime("%b %Y"),
+                           "rev": rev, "rev_fmt": format_inr(rev), "tons": round(tons, 1)})
+    for md in month_data:
+        md["pct"] = (md["rev"] / max_rev * 100) if max_rev else 0
+
+    if len(buckets) >= 2:
+        (ly, lm) = buckets[-1]
+        (py, pm) = buckets[-2]
+
+        def prod_rev_for(y, m):
+            d = {}
+            for s in all_sales:
+                if s.sale_date and s.sale_date.year == y and s.sale_date.month == m and s.product_name:
+                    d[s.product_name] = d.get(s.product_name, 0) + (s.amount or 0)
+            return d
+        last = prod_rev_for(ly, lm)
+        prev = prod_rev_for(py, pm)
+        names = set(list(last.keys()) + list(prev.keys()))
+        growth = []
+        for n in names:
+            lv, pv = last.get(n, 0), prev.get(n, 0)
+            if pv == 0 and lv == 0:
+                continue
+            change = ((lv - pv) / pv * 100) if pv else 100
+            growth.append({"name": n, "last_fmt": format_inr(lv), "prev_fmt": format_inr(pv),
+                           "change": round(change, 0), "up": lv >= pv})
+        growth.sort(key=lambda x: x["change"], reverse=True)
+    else:
+        growth = []
+
+    return render_template("trends.html", month_data=month_data, growth=growth,
+                           last_label=date(buckets[-1][0], buckets[-1][1], 1).strftime("%B %Y"))
+
+
+@app.route("/customers")
+def customers_view():
+    all_sales = Sale.query.all()
+    customers = Customer.query.all()
+
+    rev_by_cust, tons_by_cust, last_order = {}, {}, {}
+    for s in all_sales:
+        if not s.customer_name:
+            continue
+        rev_by_cust[s.customer_name] = rev_by_cust.get(s.customer_name, 0) + (s.amount or 0)
+        tons_by_cust[s.customer_name] = tons_by_cust.get(s.customer_name, 0) + (s.quantity_tons or 0)
+        if s.sale_date and (s.customer_name not in last_order or s.sale_date > last_order[s.customer_name]):
+            last_order[s.customer_name] = s.sale_date
+
+    most_profitable = sorted(rev_by_cust.items(), key=lambda x: x[1], reverse=True)[:8]
+    pmax = most_profitable[0][1] if most_profitable else 0
+    profitable_view = [{"name": n, "rev_fmt": format_inr(r), "tons": round(tons_by_cust.get(n, 0), 1),
+                        "pct": (r / pmax * 100) if pmax else 0} for n, r in most_profitable]
+
+    late = sorted([c for c in customers if c.amount_due and c.amount_due > 0],
+                  key=lambda c: (c.days_overdue or 0), reverse=True)
+    late_view = [{"name": c.name, "city": c.city, "due_fmt": format_inr(c.amount_due),
+                  "days": c.days_overdue or 0} for c in late]
+
+    today = date.today()
+    slowing = []
+    for name, last in last_order.items():
+        gap = (today - last).days
+        if gap > 45:
+            slowing.append({"name": name, "days": gap, "last_fmt": last.strftime("%d %b %Y")})
+    slowing.sort(key=lambda x: x["days"], reverse=True)
+
+    return render_template("customers.html", profitable=profitable_view,
+                           late=late_view, slowing=slowing)
 
 
 # ── API ────────────────────────────────────────────────────────────────
