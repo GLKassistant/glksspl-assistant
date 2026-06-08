@@ -1,6 +1,6 @@
 """
 GL Kundu & Sons Steel Pvt. Ltd — Business Assistant
-Flask backend: chatbot + database + dashboard.
+Flask backend: chatbot + database + dashboard + monthly report.
 The Claude API key lives ONLY on the server, never in the browser.
 """
 
@@ -31,14 +31,13 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
 # ── Indian number formatting (lakhs / crores) ──────────────────────────
 def format_inr(amount):
-    """Format a number as ₹ with Indian grouping and lakh/crore words."""
     try:
         n = float(amount or 0)
     except (TypeError, ValueError):
         return "₹0"
-    if n >= 10000000:      # 1 crore
+    if n >= 10000000:
         return f"₹{n/10000000:.2f} Cr"
-    if n >= 100000:        # 1 lakh
+    if n >= 100000:
         return f"₹{n/100000:.2f} L"
     s = f"{int(round(n)):,}"
     parts = s.replace(",", "")
@@ -181,6 +180,76 @@ def dashboard():
         low_count=len(low_stock),
         product_count=len(products),
         top_customers=top_customers,
+    )
+
+
+@app.route("/report")
+def report():
+    today = date.today()
+    month_param = request.args.get("month")
+    if month_param:
+        try:
+            y, m = month_param.split("-")
+            year, mon = int(y), int(m)
+        except Exception:
+            year, mon = today.year, today.month
+    else:
+        year, mon = today.year, today.month
+
+    start = date(year, mon, 1)
+    end = date(year + 1, 1, 1) if mon == 12 else date(year, mon + 1, 1)
+    sales = Sale.query.filter(Sale.sale_date >= start, Sale.sale_date < end).all()
+
+    revenue = sum(s.amount or 0 for s in sales)
+    tons = round(sum(s.quantity_tons or 0 for s in sales), 1)
+    orders = len(sales)
+
+    rates = {p.name.lower(): (p.rate_per_ton or 0) for p in Product.query.all()}
+    cost = sum((s.quantity_tons or 0) * rates.get((s.product_name or "").lower(), 0) for s in sales)
+    profit = revenue - cost
+    margin = (profit / revenue * 100) if revenue else 0
+
+    prod_rev, prod_tons = {}, {}
+    for s in sales:
+        if s.product_name:
+            prod_rev[s.product_name] = prod_rev.get(s.product_name, 0) + (s.amount or 0)
+            prod_tons[s.product_name] = prod_tons.get(s.product_name, 0) + (s.quantity_tons or 0)
+    tp = sorted(prod_rev.items(), key=lambda x: x[1], reverse=True)
+    pmax = tp[0][1] if tp else 0
+    top_products = [{"name": n, "rev_fmt": format_inr(r), "tons": round(prod_tons[n], 1),
+                     "pct": (r / pmax * 100) if pmax else 0} for n, r in tp]
+
+    cust_rev = {}
+    for s in sales:
+        if s.customer_name:
+            cust_rev[s.customer_name] = cust_rev.get(s.customer_name, 0) + (s.amount or 0)
+    tc = sorted(cust_rev.items(), key=lambda x: x[1], reverse=True)[:5]
+    cmax = tc[0][1] if tc else 0
+    top_customers = [{"name": n, "rev_fmt": format_inr(r), "pct": (r / cmax * 100) if cmax else 0}
+                     for n, r in tc]
+
+    months = []
+    yy, mm = today.year, today.month
+    for _ in range(12):
+        months.append({"value": f"{yy:04d}-{mm:02d}", "label": date(yy, mm, 1).strftime("%B %Y")})
+        mm -= 1
+        if mm == 0:
+            mm, yy = 12, yy - 1
+
+    return render_template(
+        "report.html",
+        month_label=start.strftime("%B %Y"),
+        selected_month=f"{year:04d}-{mon:02d}",
+        months=months,
+        revenue_fmt=format_inr(revenue),
+        cost_fmt=format_inr(cost),
+        profit_fmt=format_inr(profit),
+        margin=round(margin, 1),
+        tons=tons,
+        orders=orders,
+        top_products=top_products,
+        top_customers=top_customers,
+        has_data=orders > 0,
     )
 
 
