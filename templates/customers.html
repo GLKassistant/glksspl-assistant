@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Customer Insights — GL Kundu & Sons Steel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Hind:wght@300;400;500&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --navy:#0d1f4e; --navy-light:#152960; --navy-dark:#091435; --gold:#f0c040; --gold-dim:#c9920a; --gold-pale:#fde9a0; --text:#e8edf8; --muted:#8fa0c8; --border:#1e3368; --green:#3ecf6e; --red:#f05050; --amber:#f0a020; }
+  body { font-family:'Hind',sans-serif; background:var(--navy-dark); color:var(--text); min-height:100vh; }
+  .header { background:var(--navy); border-bottom:2px solid var(--gold-dim); padding:10px 18px; display:flex; align-items:center; gap:12px; }
+  .header img { width:42px; height:42px; border-radius:50%; border:2px solid var(--gold-dim); object-fit:cover; }
+  .header h1 { font-family:'Rajdhani',sans-serif; font-size:17px; color:var(--gold); }
+  .header p { font-size:11px; color:var(--muted); }
+  .wrap { max-width:900px; margin:0 auto; padding:18px; }
+  .nav-tabs { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .nav-tabs a { flex:1; min-width:84px; text-align:center; padding:11px; border-radius:8px; text-decoration:none; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; background:var(--navy-light); border:1px solid var(--border); color:var(--muted); }
+  .nav-tabs a.active { background:var(--gold-dim); color:var(--navy-dark); }
+  .panel { background:var(--navy-light); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .panel h2 { font-family:'Rajdhani',sans-serif; font-size:17px; color:var(--gold); margin-bottom:14px; }
+  .bar-row { margin-bottom:12px; }
+  .bar-row .bl { display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; }
+  .bar-row .bl .val { color:var(--gold-pale); font-weight:600; }
+  .bar-track { height:14px; background:var(--navy-dark); border-radius:7px; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:7px; background:linear-gradient(90deg,var(--gold-dim),var(--gold)); }
+  .flag { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--navy-dark); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }
+  .flag.red { border-color:rgba(240,80,80,.4); }
+  .fname { font-size:14px; } .fmeta { font-size:12px; color:var(--muted); }
+  .pill { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .pill.red { background:rgba(240,80,80,.15); color:var(--red); }
+  .pill.amber { background:rgba(240,160,32,.15); color:var(--amber); }
+  .muted-c { color:var(--muted); }
+  .empty { color:var(--muted); font-size:13px; padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <img src="{{ url_for('static', filename='logo.jpg') }}" alt="logo" />
+  <div><h1>Customer Insights</h1><p>GL Kundu &amp; Sons Steel · Malda</p></div>
+</div>
+<div class="wrap">
+  <div class="nav-tabs">
+    <a href="/">💬 Assistant</a>
+    <a href="/dashboard">📊 Dashboard</a>
+    <a href="/trends">📈 Trends</a>
+    <a href="/customers" class="active">👥 Customers</a>
+    <a href="/report">📄 Report</a>
+    <a href="/entry">➕ Add</a>
+  </div>
+
+  <div class="panel">
+    <h2>💰 Most Profitable Customers</h2>
+    {% if profitable %}
+      {% for c in profitable %}
+      <div class="bar-row">
+        <div class="bl"><span>{{ c.name }} <span class="muted-c">· {{ c.tons }}T</span></span><span class="val">{{ c.rev_fmt }}</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:{{ c.pct }}%"></div></div>
+      </div>
+      {% endfor %}
+    {% else %}<div class="empty">No sales recorded yet.</div>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>⏰ Late Payers</h2>
+    {% if late %}
+      {% for c in late %}
+      <div class="flag {{ 'red' if c.days > 30 else '' }}">
+        <div>
+          <div class="fname">{{ c.name }}{% if c.city %} <span class="muted-c" style="font-size:12px">· {{ c.city }}</span>{% endif %}</div>
+          <div class="fmeta">{{ c.due_fmt }} due · {{ c.days }} days overdue</div>
+        </div>
+        {% if c.days > 30 %}<span class="pill red">Chronic</span>{% else %}<span class="pill amber">Pending</span>{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}<div class="empty">✓ No outstanding payments.</div>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>📉 Slowing Down (no order in 45+ days)</h2>
+    {% if slowing %}
+      {% for c in slowing %}
+      <div class="flag">
+        <div>
+          <div class="fname">{{ c.name }}</div>
+          <div class="fmeta">Last order: {{ c.last_fmt }}</div>
+        </div>
+        <span class="pill amber">{{ c.days }} days ago</span>
+      </div>
+      {% endfor %}
+    {% else %}<div class="empty">No customers flagged as slowing down (or not enough order history yet).</div>{% endif %}
+  </div>
+</div>
+</body>
+</html>
