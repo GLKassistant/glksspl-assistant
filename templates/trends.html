@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trends — GL Kundu & Sons Steel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Hind:wght@300;400;500&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --navy:#0d1f4e; --navy-light:#152960; --navy-dark:#091435; --gold:#f0c040; --gold-dim:#c9920a; --gold-pale:#fde9a0; --text:#e8edf8; --muted:#8fa0c8; --border:#1e3368; --green:#3ecf6e; --red:#f05050; }
+  body { font-family:'Hind',sans-serif; background:var(--navy-dark); color:var(--text); min-height:100vh; }
+  .header { background:var(--navy); border-bottom:2px solid var(--gold-dim); padding:10px 18px; display:flex; align-items:center; gap:12px; }
+  .header img { width:42px; height:42px; border-radius:50%; border:2px solid var(--gold-dim); object-fit:cover; }
+  .header h1 { font-family:'Rajdhani',sans-serif; font-size:17px; color:var(--gold); }
+  .header p { font-size:11px; color:var(--muted); }
+  .wrap { max-width:900px; margin:0 auto; padding:18px; }
+  .nav-tabs { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .nav-tabs a { flex:1; min-width:84px; text-align:center; padding:11px; border-radius:8px; text-decoration:none; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; background:var(--navy-light); border:1px solid var(--border); color:var(--muted); }
+  .nav-tabs a.active { background:var(--gold-dim); color:var(--navy-dark); }
+  .panel { background:var(--navy-light); border:1px solid var(--border); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .panel h2 { font-family:'Rajdhani',sans-serif; font-size:17px; color:var(--gold); margin-bottom:16px; }
+  .chart { display:flex; align-items:flex-end; gap:10px; height:200px; padding-top:10px; }
+  .col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .col .bar { width:100%; max-width:46px; background:linear-gradient(180deg,var(--gold),var(--gold-dim)); border-radius:6px 6px 0 0; min-height:2px; transition:height .4s; }
+  .col .amt { font-size:10px; color:var(--gold-pale); margin-bottom:5px; text-align:center; }
+  .col .lbl { font-size:10px; color:var(--muted); margin-top:6px; text-align:center; }
+  .grow-row { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--navy-dark); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; }
+  .grow-row .gname { font-size:14px; }
+  .grow-row .gmeta { font-size:11px; color:var(--muted); }
+  .chg { font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; padding:3px 10px; border-radius:20px; }
+  .chg.up { background:rgba(62,207,110,.15); color:var(--green); }
+  .chg.down { background:rgba(240,80,80,.15); color:var(--red); }
+  .empty { color:var(--muted); font-size:13px; padding:8px 0; }
+</style>
+</head>
+<body>
+<div class="header">
+  <img src="{{ url_for('static', filename='logo.jpg') }}" alt="logo" />
+  <div><h1>Sales Trends</h1><p>GL Kundu &amp; Sons Steel · Malda</p></div>
+</div>
+<div class="wrap">
+  <div class="nav-tabs">
+    <a href="/">💬 Assistant</a>
+    <a href="/dashboard">📊 Dashboard</a>
+    <a href="/trends" class="active">📈 Trends</a>
+    <a href="/customers">👥 Customers</a>
+    <a href="/report">📄 Report</a>
+    <a href="/entry">➕ Add</a>
+  </div>
+
+  <div class="panel">
+    <h2>📈 Revenue — Last 6 Months</h2>
+    {% if month_data %}
+    <div class="chart">
+      {% for m in month_data %}
+      <div class="col">
+        <div class="amt">{{ m.rev_fmt }}</div>
+        <div class="bar" style="height:{{ m.pct }}%"></div>
+        <div class="lbl">{{ m.label }}<br>{{ m.tons }}T</div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="empty">No sales history yet.</div>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>🚀 Product Growth — {{ last_label }} vs previous month</h2>
+    {% if growth %}
+      {% for g in growth %}
+      <div class="grow-row">
+        <div>
+          <div class="gname">{{ g.name }}</div>
+          <div class="gmeta">{{ g.prev_fmt }} → {{ g.last_fmt }}</div>
+        </div>
+        <span class="chg {{ 'up' if g.up else 'down' }}">{{ '▲' if g.up else '▼' }} {{ g.change }}%</span>
+      </div>
+      {% endfor %}
+    {% else %}<div class="empty">Not enough month-over-month data yet to compare growth.</div>{% endif %}
+  </div>
+</div>
+</body>
+</html>
