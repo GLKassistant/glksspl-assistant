@@ -18,9 +18,9 @@
   .header img.logo { width:44px; height:44px; border-radius:50%; border:2px solid var(--gold-dim); object-fit:cover; flex-shrink:0; }
   .header-info h1 { font-family:'Rajdhani',sans-serif; font-size:17px; font-weight:700; color:var(--gold); letter-spacing:.6px; line-height:1.1; }
   .header-info p { font-size:11px; color:var(--muted); margin-top:2px; }
-  .nav-links { margin-left:auto; display:flex; gap:8px; }
-  .nav-link { background:rgba(240,192,64,.12); border:1px solid var(--gold-dim); border-radius:20px; padding:7px 14px; font-size:13px; color:var(--gold); text-decoration:none; font-family:'Rajdhani',sans-serif; font-weight:600; white-space:nowrap; }
-  .nav-link:hover { background:var(--gold-dim); color:var(--navy-dark); }
+  .nav-tabs { background:var(--navy); border-bottom:1px solid var(--border); padding:8px 14px; display:flex; gap:7px; flex-shrink:0; overflow-x:auto; }
+  .nav-tabs a { white-space:nowrap; padding:8px 13px; border-radius:8px; text-decoration:none; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; background:var(--navy-light); border:1px solid var(--border); color:var(--muted); }
+  .nav-tabs a.active { background:var(--gold-dim); color:var(--navy-dark); }
   .products-strip { background:var(--navy-mid); border-bottom:1px solid var(--border); padding:5px 16px; display:flex; gap:8px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
   .prod-tag { background:rgba(240,192,64,.1); border:1px solid rgba(240,192,64,.3); border-radius:20px; padding:2px 10px; font-size:10.5px; color:var(--gold-pale); font-family:'Rajdhani',sans-serif; font-weight:600; }
   .prod-label { font-size:10px; color:var(--muted); }
@@ -67,10 +67,15 @@
     <h1>GL Kundu &amp; Sons Steel Pvt. Ltd</h1>
     <p>Authorised Distributor of Tata Steel · Malda</p>
   </div>
-  <div class="nav-links">
-    <a class="nav-link" href="/dashboard">📊 Dashboard</a>
-    <a class="nav-link" href="/entry">➕ Add Data</a>
-  </div>
+</div>
+
+<div class="nav-tabs">
+  <a href="/" class="active">💬 Assistant</a>
+  <a href="/dashboard">📊 Dashboard</a>
+  <a href="/trends">📈 Trends</a>
+  <a href="/customers">👥 Customers</a>
+  <a href="/report">📄 Report</a>
+  <a href="/entry">➕ Add Data</a>
 </div>
 
 <div class="products-strip">
