@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Add Data — GL Kundu & Sons Steel</title>
+<style>
+  body { font-family:sans-serif; background:#091435; color:#e8edf8; margin:0; }
+  header { background:#0d1f4e; border-bottom:2px solid #c9920a; padding:14px 18px; display:flex; align-items:center; gap:12px; }
+  header img { width:40px; height:40px; border-radius:50%; border:2px solid #c9920a; object-fit:cover; }
+  header h1 { color:#f0c040; font-size:17px; margin:0; }
+  header a { color:#f0c040; font-size:13px; margin-left:auto; text-decoration:none; }
+  .wrap { max-width:520px; margin:0 auto; padding:18px; }
+  .tabs { display:flex; gap:6px; margin-bottom:16px; }
+  .tab { flex:1; padding:11px; background:#152960; border:1px solid #1e3368; border-radius:8px; text-align:center; cursor:pointer; font-size:14px; color:#8fa0c8; }
+  .tab.active { background:#c9920a; color:#091435; font-weight:bold; }
+  .card { background:#152960; border:1px solid #1e3368; border-radius:12px; padding:18px; display:none; }
+  .card.active { display:block; }
+  .card h2 { color:#f0c040; font-size:18px; margin:0 0 14px; }
+  label { display:block; font-size:13px; color:#fde9a0; margin:12px 0 5px; }
+  input, select { width:100%; box-sizing:border-box; background:#091435; border:1px solid #1e3368; border-radius:8px; padding:13px; color:#e8edf8; font-size:16px; }
+  button.go { width:100%; margin-top:18px; padding:15px; background:#c9920a; border:none; border-radius:8px; color:#091435; font-weight:bold; font-size:16px; cursor:pointer; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:13px 22px; border-radius:8px; font-size:15px; opacity:0; transition:opacity .3s; }
+  #toast.show { opacity:1; }
+  #toast.ok { background:#3ecf6e; color:#053018; }
+  #toast.err { background:#f05050; color:#3a0808; }
+</style>
+</head>
+<body>
+<header>
+  <img src="{{ url_for('static', filename='logo.jpg') }}" alt="logo" />
+  <h1>Add Data</h1>
+  <a href="/">&larr; Back to Assistant</a>
+</header>
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" onclick="show('stock',this)">Stock In</div>
+    <div class="tab" onclick="show('sale',this)">New Sale</div>
+    <div class="tab" onclick="show('cust',this)">Customer</div>
+  </div>
+
+  <div class="card active" id="c-stock">
+    <h2>Stock Received</h2>
+    <label>Product Name</label>
+    <input id="s-name" placeholder="e.g. Tata Tiscon (TMT Fe-500)" />
+    <label>Quantity Received (Tons)</label>
+    <input id="s-qty" type="number" inputmode="decimal" placeholder="e.g. 50" />
+    <label>Rate per Ton (₹) — optional</label>
+    <input id="s-rate" type="number" inputmode="numeric" placeholder="e.g. 56000" />
+    <label>Reorder Level (Tons) — optional</label>
+    <input id="s-reorder" type="number" inputmode="numeric" placeholder="e.g. 40" />
+    <button class="go" onclick="addStock(this)">Add Stock</button>
+  </div>
+
+  <div class="card" id="c-sale">
+    <h2>New Sale</h2>
+    <label>Product Name</label>
+    <input id="sale-product" placeholder="e.g. Tata Tiscon (TMT Fe-500)" />
+    <label>Customer Name</label>
+    <input id="sale-customer" placeholder="e.g. Ramesh Construction" />
+    <label>Quantity Sold (Tons)</label>
+    <input id="sale-qty" type="number" inputmode="decimal" placeholder="e.g. 10" />
+    <label>Total Amount (₹)</label>
+    <input id="sale-amount" type="number" inputmode="numeric" placeholder="e.g. 560000" />
+    <button class="go" onclick="addSale(this)">Record Sale</button>
+  </div>
+
+  <div class="card" id="c-cust">
+    <h2>Add Customer</h2>
+    <label>Customer Name</label>
+    <input id="c-name" placeholder="e.g. Mondal & Sons" />
+    <label>City</label>
+    <input id="c-city" placeholder="e.g. Malda" />
+    <label>Amount Due (₹) — if any</label>
+    <input id="c-due" type="number" inputmode="numeric" placeholder="e.g. 92000" />
+    <label>Days Overdue — if any</label>
+    <input id="c-days" type="number" inputmode="numeric" placeholder="e.g. 12" />
+    <button class="go" onclick="addCust(this)">Add Customer</button>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+function show(name, el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('c-'+name).classList.add('active');
+}
+function toast(msg, ok){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+(ok?'ok':'err');
+  setTimeout(()=>t.className='', 2800);
+}
+async function post(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  return r.json();
+}
+async function addStock(b){
+  const name=document.getElementById('s-name').value.trim();
+  if(!name){ toast('Please enter a product name', false); return; }
+  b.disabled=true;
+  const r=await post('/api/add-stock',{name, quantity:document.getElementById('s-qty').value, rate:document.getElementById('s-rate').value, reorder:document.getElementById('s-reorder').value});
+  b.disabled=false;
+  if(r.ok){ toast('Stock added', true); ['s-name','s-qty','s-rate','s-reorder'].forEach(i=>document.getElementById(i).value=''); }
+  else toast(r.error||'Error', false);
+}
+async function addSale(b){
+  b.disabled=true;
+  const r=await post('/api/add-sale',{product:document.getElementById('sale-product').value.trim(), customer:document.getElementById('sale-customer').value.trim(), quantity:document.getElementById('sale-qty').value, amount:document.getElementById('sale-amount').value});
+  b.disabled=false;
+  if(r.ok){ toast('Sale recorded', true); ['sale-product','sale-customer','sale-qty','sale-amount'].forEach(i=>document.getElementById(i).value=''); }
+  else toast(r.error||'Error', false);
+}
+async function addCust(b){
+  const name=document.getElementById('c-name').value.trim();
+  if(!name){ toast('Please enter a customer name', false); return; }
+  b.disabled=true;
+  const r=await post('/api/add-customer',{name, city:document.getElementById('c-city').value.trim(), due:document.getElementById('c-due').value, days:document.getElementById('c-days').value});
+  b.disabled=false;
+  if(r.ok){ toast('Customer added', true); ['c-name','c-city','c-due','c-days'].forEach(i=>document.getElementById(i).value=''); }
+  else toast(r.error||'Error', false);
+}
+</script>
+</body>
+</html>
